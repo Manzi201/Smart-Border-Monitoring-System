@@ -345,34 +345,29 @@
         // API Interactions
         async function fetchEvents() {
             try {
-                const response = await fetch(`${API_BASE}/crossings/`);
-                const data = await response.json();
+                // Fetch details directly from Supabase for the log table
+                const { data, error } = await db
+                    .from('monitoring_crossingevent')
+                    .select('*, monitoring_person(full_name)')
+                    .order('timestamp', { ascending: false })
+                    .limit(10);
+
+                if (error) throw error;
 
                 const list = document.getElementById('event-list');
                 list.innerHTML = '';
 
-                let identified = 0;
-                let unknown = 0;
-
-                data.forEach((event, index) => {
-                    if (event.is_identified) identified++; else unknown++;
-
-                    if (index < 10) { // Only show top 10
-                        const tr = document.createElement('tr');
-                        tr.innerHTML = `
-                            <td>${new Date(event.timestamp).toLocaleTimeString()}</td>
-                            <td>${event.location}</td>
-                            <td>${event.person_name || 'Unknown Subject'}</td>
-                            <td>${(event.confidence_score * 100).toFixed(1)}%</td>
-                            <td><span class="badge ${event.is_identified ? 'badge-success' : 'badge-danger'}">${event.is_identified ? 'IDENTIFIED' : 'ALERT'}</span></td>
-                        `;
-                        list.appendChild(tr);
-                    }
+                data.forEach((event) => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${new Date(event.timestamp).toLocaleTimeString()}</td>
+                        <td>${event.location}</td>
+                        <td>${event.monitoring_person?.full_name || 'Unknown Subject'}</td>
+                        <td>${(event.confidence_score * 100).toFixed(1)}%</td>
+                        <td><span class="badge ${event.is_identified ? 'badge-success' : 'badge-danger'}">${event.is_identified ? 'IDENTIFIED' : 'ALERT'}</span></td>
+                    `;
+                    list.appendChild(tr);
                 });
-
-                // document.getElementById('count-crossings').innerText = data.length; // Handled by fetchStats
-                // document.getElementById('count-identified').innerText = identified; // Handled by fetchStats
-                // document.getElementById('count-unknown').innerText = unknown; // Handled by fetchStats
 
                 if (data.length > lastEventCount && lastEventCount > 0) {
                     const latest = data[0];
@@ -386,18 +381,35 @@
                 fetchStats();
 
             } catch (err) {
-                console.error("Failed to fetch events:", err);
+                console.error("Failed to fetch events from Supabase:", err);
             }
         }
 
         async function fetchStats() {
             try {
-                const response = await fetch(`${API_BASE}/crossings/stats/`);
-                const stats = await response.json();
-                document.getElementById('count-crossings').innerText = stats.total_24h;
-                document.getElementById('count-identified').innerText = stats.identified_24h;
-                document.getElementById('count-unknown').innerText = stats.unknown_24h;
-            } catch (e) { }
+                // Query the summary view we created in SQL
+                const { data, error } = await db
+                    .from('daily_intelligence_summary')
+                    .select('*');
+
+                if (error) throw error;
+
+                let total = 0;
+                let identified = 0;
+                let unknown = 0;
+
+                data.forEach(stat => {
+                    total += parseInt(stat.total_crossings);
+                    identified += parseInt(stat.identified_personnel);
+                    unknown += parseInt(stat.alerts_triggered);
+                });
+
+                document.getElementById('count-crossings').innerText = total;
+                document.getElementById('count-identified').innerText = identified;
+                document.getElementById('count-unknown').innerText = unknown;
+            } catch (e) {
+                console.error("Stats fetch error:", e);
+            }
         }
 
         function triggerAlert(location) {
