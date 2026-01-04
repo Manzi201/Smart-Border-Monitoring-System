@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GaitGuard | Smart Border Monitoring</title>
+    <link rel="stylesheet" href="dashboard.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+    <div class="sidebar">
+        <div class="logo">
+            <i data-lucide="shield-check"></i>
+            <span>GaitGuard AI</span>
+        </div>
+        <ul class="nav-links">
+            <li class="nav-item">
+                <a href="#" class="nav-link active" onclick="showView('dashboard')">
+                    <i data-lucide="layout-dashboard"></i> Dashboard
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link" onclick="showView('registration')">
+                    <i data-lucide="user-plus"></i> New Registration
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link" onclick="showView('analytics')">
+                    <i data-lucide="bar-chart-3"></i> Analytics
+                </a>
+            </li>
+            <li class="nav-item" style="margin-top: auto;">
+                <a href="#" class="nav-link" onclick="showView('settings')">
+                    <i data-lucide="settings"></i> System Settings
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    <main class="main-content">
+        <!-- HEADER -->
+        <header class="header">
+            <div>
+                <h1 id="view-title">Command Center</h1>
+                <p class="stat-label">Real-time border activity monitoring</p>
+            </div>
+            <div class="status-pills">
+                <div class="pill pill-online">
+                    <div class="dot"></div>
+                    Sensors Online
+                </div>
+                <div class="pill">
+                    <i data-lucide="clock" size="16"></i>
+                    <span id="current-time">10:45 AM</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- DASHBOARD VIEW -->
+        <div id="dashboard-view">
+            <div class="dashboard-grid">
+                <div class="stat-card">
+                    <p class="stat-label">Total Crossings (24h)</p>
+                    <p class="stat-value" id="count-crossings">0</p>
+                </div>
+                <div class="stat-card">
+                    <p class="stat-label">Identified Persons</p>
+                    <p class="stat-value" id="count-identified" style="color: var(--accent);">0</p>
+                </div>
+                <div class="stat-card">
+                    <p class="stat-label">Unknown Alerts</p>
+                    <p class="stat-value" id="count-unknown" style="color: var(--danger);">0</p>
+                </div>
+            </div>
+
+            <div class="activity-section">
+                <!-- Live Feed & Map -->
+                <!-- Live Signal Stream -->
+                <div class="glass-card">
+                    <div class="table-header">
+                        <h3>Geospatial Awareness</h3>
+                        <div class="badge badge-success">SENSORS ACTIVE</div>
+                    </div>
+
+                    <div id="map-radar"
+                        style="height: 300px; position: relative; background: rgba(0,0,0,0.3); border-radius: 1rem; overflow: hidden; margin-bottom: 1.5rem; border: 1px solid var(--glass-border);">
+                        <!-- Static Map Background Simulation -->
+                        <div
+                            style="position: absolute; width: 100%; height: 100%; opacity: 0.2; background-image: radial-gradient(#6366f1 1px, transparent 1px); background-size: 20px 20px;">
+                        </div>
+
+                        <!-- Border Points -->
+                        <div class="map-point" data-loc="Checkpoint 1" style="top: 20%; left: 30%;"></div>
+                        <div class="map-point" data-loc="Forest Path A" style="top: 50%; left: 70%;"></div>
+                        <div class="map-point" data-loc="Remote Trail B" style="top: 80%; left: 40%;"></div>
+
+                        <style>
+                            .map-point {
+                                position: absolute;
+                                width: 12px;
+                                height: 12px;
+                                background: var(--accent);
+                                border-radius: 50%;
+                                cursor: pointer;
+                                box-shadow: 0 0 15px var(--accent);
+                            }
+
+                            .map-point::after {
+                                content: attr(data-loc);
+                                position: absolute;
+                                top: 15px;
+                                left: 50%;
+                                transform: translateX(-50%);
+                                font-size: 10px;
+                                white-space: nowrap;
+                                color: var(--text-muted);
+                            }
+
+                            .alert-ping {
+                                animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+                                position: absolute;
+                                border-radius: 50%;
+                                background: var(--danger);
+                                width: 40px;
+                                height: 40px;
+                                left: -14px;
+                                top: -14px;
+                                opacity: 0;
+                            }
+
+                            @keyframes ping {
+
+                                75%,
+                                100% {
+                                    transform: scale(2);
+                                    opacity: 0;
+                                }
+
+                                0% {
+                                    opacity: 0.5;
+                                }
+                            }
+                        </style>
+                    </div>
+
+                    <div class="table-header">
+                        <h3>Sub-millimeter Wave Signal</h3>
+                        <div class="badge badge-success">RAW DATA</div>
+                    </div>
+                    <div style="height: 150px; margin-bottom: 2rem;">
+                        <canvas id="signalChart"></canvas>
+                    </div>
+
+                    <h3>Intrusion Detection Logs</h3>
+                    <table id="event-table">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Location</th>
+                                <th>Subject</th>
+                                <th>Confidence</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="event-list">
+                            <!-- Events injected here -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Registration Quick Look -->
+                <div class="glass-card">
+                    <h3>Quick Register</h3>
+                    <p class="stat-label" style="margin-bottom: 1.5rem;">Initialize gait profile capture</p>
+                    <div class="form-group">
+                        <label>Full Name</label>
+                        <input type="text" id="reg-name" placeholder="John Doe">
+                    </div>
+                    <div class="form-group">
+                        <label>National ID</label>
+                        <input type="text" id="reg-id" placeholder="ID-12345678">
+                    </div>
+                    <button class="btn" onclick="quickRegister()">Capture & Register</button>
+
+                    <div style="margin-top: 2rem;">
+                        <h3>Active Locations</h3>
+                        <ul style="list-style: none; margin-top: 1rem;">
+                            <li
+                                style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.875rem;">
+                                <span>Forest Path A</span>
+                                <span style="color: var(--accent);">Active</span>
+                            </li>
+                            <li
+                                style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.875rem;">
+                                <span>Checkpoint 1</span>
+                                <span style="color: var(--accent);">Active</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- OTHER VIEWS HIDDEN BY DEFAULT -->
+        <div id="registration-view" style="display: none;">
+            <div class="glass-card" style="max-width: 600px; margin: 0 auto;">
+                <h2>Detailed Person Registration</h2>
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" id="full-name" placeholder="Enter name">
+                </div>
+                <div class="form-group">
+                    <label>National ID / Passport</label>
+                    <input type="text" id="national-id" placeholder="Enter ID number">
+                </div>
+                <div class="form-group">
+                    <label>Place of Birth</label>
+                    <input type="text" id="birth-place" placeholder="City, Country">
+                </div>
+                <div class="form-group">
+                    <label>Living Location</label>
+                    <input type="text" id="living-location" placeholder="Current address">
+                </div>
+                <div class="form-group">
+                    <label>Initial Gait Signal Reference</label>
+                    <div
+                        style="background: rgba(0,0,0,0.2); height: 100px; border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; border: 1px dashed var(--glass-border);">
+                        <span style="color: var(--text-muted);">Ready to capture...</span>
+                    </div>
+                </div>
+                <button class="btn" onclick="savePerson()">Finish Registration</button>
+            </div>
+        </div>
+
+        <div id="records-view" style="display: none;">
+            <div class="glass-card">
+                <h2>Identified Person Database</h2>
+                <table style="margin-top: 1.5rem;">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>ID Number</th>
+                            <th>Status</th>
+                            <th>Crossings</th>
+                            <th>Last Seen</th>
+                        </tr>
+                    </thead>
+                    <tbody id="person-list">
+                        <!-- Data will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        lucide.createIcons();
+
+        // Constants
+        const API_BASE = "http://127.0.0.1:8000/api";
+
+        // State
+        let signalChart;
+        let lastEventCount = 0;
+
+        // Routing
+        function showView(view) {
+            document.getElementById('dashboard-view').style.display = 'none';
+            document.getElementById('registration-view').style.display = 'none';
+            document.getElementById('records-view').style.display = 'none';
+
+            document.getElementById(view + '-view').style.display = 'block';
+
+            // Update nav active state
+            document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+            event?.target?.closest('.nav-link')?.classList.add('active');
+
+            let titles = {
+                'dashboard': 'Command Center',
+                'registration': 'Person Enrollment',
+                'records': 'Intelligence Database'
+            };
+            document.getElementById('view-title').innerText = titles[view];
+
+            if (view === 'records') loadPeople();
+        }
+
+        // Clock
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('current-time').innerText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // Chart Initialization
+        function initChart() {
+            const ctx = document.getElementById('signalChart').getContext('2d');
+            signalChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array(20).fill(''),
+                    datasets: [{
+                        label: 'mmWave Signal Amplitude',
+                        data: Array(20).fill(0),
+                        borderColor: '#6366f1',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true,
+                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                        pointRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { display: false, min: 0, max: 1 },
+                        x: { display: false }
+                    },
+                    animation: { duration: 1000 }
+                }
+            });
+        }
+        initChart();
+
+        // Simulated signal updates
+        setInterval(() => {
+            signalChart.data.datasets[0].data.shift();
+            signalChart.data.datasets[0].data.push(Math.random() * 0.5 + 0.2);
+            signalChart.update('none');
+        }, 100);
+
+        // API Interactions
+        async function fetchEvents() {
+            try {
+                const response = await fetch(`${API_BASE}/crossings/`);
+                const data = await response.json();
+
+                const list = document.getElementById('event-list');
+                list.innerHTML = '';
+
+                let identified = 0;
+                let unknown = 0;
+
+                data.forEach((event, index) => {
+                    if (event.is_identified) identified++; else unknown++;
+
+                    if (index < 10) { // Only show top 10
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${new Date(event.timestamp).toLocaleTimeString()}</td>
+                            <td>${event.location}</td>
+                            <td>${event.person_name || 'Unknown Subject'}</td>
+                            <td>${(event.confidence_score * 100).toFixed(1)}%</td>
+                            <td><span class="badge ${event.is_identified ? 'badge-success' : 'badge-danger'}">${event.is_identified ? 'IDENTIFIED' : 'ALERT'}</span></td>
+                        `;
+                        list.appendChild(tr);
+                    }
+                });
+
+                // document.getElementById('count-crossings').innerText = data.length; // Handled by fetchStats
+                // document.getElementById('count-identified').innerText = identified; // Handled by fetchStats
+                // document.getElementById('count-unknown').innerText = unknown; // Handled by fetchStats
+
+                if (data.length > lastEventCount && lastEventCount > 0) {
+                    const latest = data[0];
+                    if (!latest.is_identified) {
+                        triggerAlert(latest.location);
+                    }
+                }
+                lastEventCount = data.length;
+
+                // Sync with stats
+                fetchStats();
+
+            } catch (err) {
+                console.error("Failed to fetch events:", err);
+            }
+        }
+
+        async function fetchStats() {
+            try {
+                const response = await fetch(`${API_BASE}/crossings/stats/`);
+                const stats = await response.json();
+                document.getElementById('count-crossings').innerText = stats.total_24h;
+                document.getElementById('count-identified').innerText = stats.identified_24h;
+                document.getElementById('count-unknown').innerText = stats.unknown_24h;
+            } catch (e) { }
+        }
+
+        function triggerAlert(location) {
+            const points = document.querySelectorAll('.map-point');
+            points.forEach(p => {
+                if (p.getAttribute('data-loc') === location) {
+                    const ping = document.createElement('div');
+                    ping.className = 'alert-ping';
+                    p.appendChild(ping);
+                    setTimeout(() => ping.remove(), 5000);
+
+                    // Browser notification or UI toast could go here
+                    showToast(`🚨 UNKNOWN CROSSING at ${location}`);
+                }
+            });
+        }
+
+        function showToast(msg) {
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                position: fixed;
+                bottom: 2rem;
+                right: 2rem;
+                background: var(--danger);
+                color: white;
+                padding: 1rem 1.5rem;
+                border-radius: 1rem;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+                z-index: 1000;
+                animation: slideIn 0.3s ease-out;
+             `;
+            toast.innerText = msg;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 4000);
+        }
+
+        // Add keyframe for toast
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+        `;
+        document.head.appendChild(style);
+
+        setInterval(fetchEvents, 3000);
+        fetchEvents();
+
+        async function loadPeople() {
+            try {
+                const response = await fetch(`${API_BASE}/people/`);
+                const data = await response.json();
+                const list = document.getElementById('person-list');
+                list.innerHTML = '';
+
+                data.forEach(p => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${p.full_name}</td>
+                        <td>${p.national_id}</td>
+                        <td><span class="badge badge-success">ACTIVE</span></td>
+                        <td>--</td>
+                        <td>${new Date(p.registered_at).toLocaleDateString()}</td>
+                    `;
+                    list.appendChild(tr);
+                });
+            } catch (err) { }
+        }
+
+        async function savePerson() {
+            const payload = {
+                full_name: document.getElementById('full-name').value,
+                national_id: document.getElementById('national-id').value,
+                place_of_birth: document.getElementById('birth-place').value,
+                current_living_location: document.getElementById('living-location').value
+            };
+
+            const response = await fetch(`${API_BASE}/people/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (response.ok) {
+                const person = await response.json();
+                // Now create a mock gait profile for them
+                await fetch(`${API_BASE}/gait-profiles/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        person: person.id,
+                        gait_data: { "ref": "captured_motion_001" }
+                    })
+                });
+                alert("Person registered successfully!");
+                showView('dashboard');
+            } else {
+                alert("Error during registration.");
+            }
+        }
+
+        async function quickRegister() {
+            const name = document.getElementById('reg-name').value;
+            const id = document.getElementById('reg-id').value;
+            if (!name || !id) return alert("Please fill Name and ID");
+
+            // Simple version of savePerson
+            const payload = {
+                full_name: name,
+                national_id: id,
+                place_of_birth: "Captured at Border",
+                current_living_location: "Processing"
+            };
+
+            const response = await fetch(`${API_BASE}/people/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (response.ok) {
+                const person = await response.json();
+                await fetch(`${API_BASE}/gait-profiles/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        person: person.id,
+                        gait_data: { "ref": "auto_capture" }
+                    })
+                });
+                alert("Recorded! The system is now calibrating...");
+                document.getElementById('reg-name').value = '';
+                document.getElementById('reg-id').value = '';
+            }
+        }
+
+    </script>
+</body>
+
+</html>
