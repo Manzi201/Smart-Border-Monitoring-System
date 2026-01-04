@@ -805,8 +805,13 @@
 
         async function loadPeople() {
             try {
-                const response = await fetch(`${API_BASE}/people/`);
-                const data = await response.json();
+                const { data, error } = await db
+                    .from('monitoring_person')
+                    .select('*')
+                    .order('registered_at', { ascending: false });
+
+                if (error) throw error;
+
                 const list = document.getElementById('person-list');
                 list.innerHTML = '';
 
@@ -815,16 +820,22 @@
                     tr.innerHTML = `
                         <td>${p.full_name}</td>
                         <td>${p.national_id}</td>
-                        <td><span class="badge badge-success">ACTIVE</span></td>
-                        <td>--</td>
+                        <td><span class="badge badge-success">AUTHORIZED</span></td>
                         <td>${new Date(p.registered_at).toLocaleDateString()}</td>
                     `;
                     list.appendChild(tr);
                 });
-            } catch (err) { }
+            } catch (err) {
+                console.error("Failed to load people:", err);
+            }
         }
 
         async function savePerson() {
+            const btn = event.target;
+            const originalText = btn.innerText;
+            btn.innerText = "Processing...";
+            btn.disabled = true;
+
             const payload = {
                 full_name: document.getElementById('full-name').value,
                 national_id: document.getElementById('national-id').value,
@@ -832,62 +843,84 @@
                 current_living_location: document.getElementById('living-location').value
             };
 
-            const response = await fetch(`${API_BASE}/people/`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
+            if (!payload.full_name || !payload.national_id) {
+                alert("Name and ID are required.");
+                btn.innerText = originalText;
+                btn.disabled = false;
+                return;
+            }
 
-            if (response.ok) {
-                const person = await response.json();
-                // Now create a mock gait profile for them
-                await fetch(`${API_BASE}/gait-profiles/`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        person: person.id,
-                        gait_data: { "ref": "captured_motion_001" }
-                    })
-                });
-                alert("Person registered successfully!");
-                showView('dashboard');
-            } else {
-                alert("Error during registration.");
+            try {
+                const { data: person, error: perError } = await db
+                    .from('monitoring_person')
+                    .insert([payload])
+                    .select()
+                    .single();
+
+                if (perError) throw perError;
+
+                // Create gait profile link
+                const { error: gaitError } = await db
+                    .from('monitoring_gaitprofile')
+                    .insert([{
+                        person_id: person.id,
+                        gait_data: { "ref": "motion_scan_" + Math.random().toString(36).substr(2, 5) }
+                    }]);
+
+                if (gaitError) throw gaitError;
+
+                showToast("✅ Biometric Profile Created");
+                logSystemEvent(`Enrolled Subject: ${person.full_name}`);
+
+                // Reset form
+                document.getElementById('full-name').value = '';
+                document.getElementById('national-id').value = '';
+                document.getElementById('birth-place').value = '';
+                document.getElementById('living-location').value = '';
+
+                loadPeople();
+            } catch (err) {
+                console.error("Registration error:", err);
+                alert("Error during registration: " + err.message);
+            } finally {
+                btn.innerText = "Initialize Capture";
+                btn.disabled = false;
             }
         }
 
         async function quickRegister() {
             const name = document.getElementById('reg-name').value;
             const id = document.getElementById('reg-id').value;
+
             if (!name || !id) return alert("Please fill Name and ID");
 
-            // Simple version of savePerson
-            const payload = {
-                full_name: name,
-                national_id: id,
-                place_of_birth: "Captured at Border",
-                current_living_location: "Processing"
-            };
+            try {
+                const { data: person, error } = await db
+                    .from('monitoring_person')
+                    .insert([{
+                        full_name: name,
+                        national_id: id,
+                        place_of_birth: "Captured at Border",
+                        current_living_location: "Processing"
+                    }])
+                    .select()
+                    .single();
 
-            const response = await fetch(`${API_BASE}/people/`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
+                if (error) throw error;
 
-            if (response.ok) {
-                const person = await response.json();
-                await fetch(`${API_BASE}/gait-profiles/`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        person: person.id,
-                        gait_data: { "ref": "auto_capture" }
-                    })
-                });
-                alert("Recorded! The system is now calibrating...");
+                await db.from('monitoring_gaitprofile').insert([{
+                    person_id: person.id,
+                    gait_data: { "ref": "auto_capture" }
+                }]);
+
+                showToast("✅ Quick Registration Successful");
+                logSystemEvent(`Quick Enrolled: ${name}`);
+
                 document.getElementById('reg-name').value = '';
                 document.getElementById('reg-id').value = '';
+                loadPeople();
+            } catch (err) {
+                alert("Quick registration failed: " + err.message);
             }
         }
 
