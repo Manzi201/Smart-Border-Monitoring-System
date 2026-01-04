@@ -14,9 +14,28 @@
 <body>
     <div class="sidebar">
         <div class="logo">
-            <i data-lucide="shield-check"></i>
-            <span>GaitGuard AI</span>
+            <div class="logo-icon">
+                <i data-lucide="shield-check"></i>
+            </div>
+            <span>SmartBorder <span style="font-weight: 300; opacity: 0.7;">AI</span></span>
         </div>
+        <style>
+            .logo-icon {
+                background: var(--primary);
+                width: 38px;
+                height: 38px;
+                border-radius: 10px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+            }
+
+            .logo span {
+                font-size: 1.1rem;
+                letter-spacing: 0.5px;
+            }
+        </style>
         <ul class="nav-links">
             <li class="nav-item">
                 <a href="#" class="nav-link active" onclick="showView('dashboard')">
@@ -238,21 +257,123 @@
 
         <div id="records-view" style="display: none;">
             <div class="glass-card">
-                <h2>Identified Person Database</h2>
+                <h2>Intelligence Database</h2>
+                <p class="stat-label">Archive of all registered biometric gait profiles</p>
                 <table style="margin-top: 1.5rem;">
                     <thead>
                         <tr>
                             <th>Name</th>
                             <th>ID Number</th>
                             <th>Status</th>
-                            <th>Crossings</th>
-                            <th>Last Seen</th>
+                            <th>Registered At</th>
                         </tr>
                     </thead>
                     <tbody id="person-list">
                         <!-- Data will be loaded here -->
                     </tbody>
                 </table>
+            </div>
+        </div>
+
+        <!-- ANALYTICS VIEW -->
+        <div id="analytics-view" style="display: none;">
+            <div class="dashboard-grid">
+                <div class="glass-card">
+                    <h3>Identified vs Unknown</h3>
+                    <div style="height: 300px; margin-top: 1rem;">
+                        <canvas id="ratioChart"></canvas>
+                    </div>
+                </div>
+                <div class="glass-card" style="grid-column: span 2;">
+                    <h3>Crossing Trends (Last 7 Days)</h3>
+                    <div style="height: 300px; margin-top: 1rem;">
+                        <canvas id="trendsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="glass-card">
+                <h3>Regional Activity Heatmap</h3>
+                <div
+                    style="height: 200px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.2); border-radius: 1rem; border: 1px dashed var(--glass-border); margin-top: 1rem;">
+                    <p class="stat-label">Spatial data processing active...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- SETTINGS VIEW -->
+        <div id="settings-view" style="display: none;">
+            <div class="activity-section">
+                <div class="glass-card">
+                    <h2>System Configuration</h2>
+                    <p class="stat-label" style="margin-bottom: 2rem;">Configure AI sensitivity and alert protocols</p>
+
+                    <div class="form-group">
+                        <label>Identification Confidence Threshold (%)</label>
+                        <input type="range" min="50" max="99" value="85"
+                            style="width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 5px; cursor: pointer;"
+                            oninput="this.nextElementSibling.value = this.value">
+                        <output
+                            style="display: block; text-align: right; color: var(--primary); font-weight: 700;">85</output>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Alert Trigger Interval (Seconds)</label>
+                        <input type="number" value="10" style="background: rgba(0,0,0,0.3);">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Active Sensor Node</label>
+                        <select id="active-node"
+                            style="width: 100%; padding: 0.75rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: white; border-radius: 0.75rem;">
+                            <option value="node-01">S-NODE-01 (Checkpoint 1)</option>
+                            <option value="node-02">S-NODE-02 (Forest Path A)</option>
+                            <option value="node-03">S-NODE-03 (Remote Trail B)</option>
+                        </select>
+                    </div>
+
+                    <div style="margin: 2rem 0; border-top: 1px solid var(--glass-border); padding-top: 1rem;">
+                        <h3>Sensor API Endpoints</h3>
+                        <p class="stat-label">Define where the system listens for sensor data</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Monitoring Sensor API (Detection)</label>
+                        <input type="text" id="monitoring-api" placeholder="http://192.168.1.50:5000/detect"
+                            style="background: rgba(0,0,0,0.3);">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Registration Sensor API (Gait Capture)</label>
+                        <input type="text" id="registration-api" placeholder="http://192.168.1.50:5000/capture"
+                            style="background: rgba(0,0,0,0.3);">
+                    </div>
+
+                    <div style="margin-top: 2rem; display: flex; gap: 1rem;">
+                        <button class="btn" style="background: var(--primary);" onclick="saveSettings()">Save Cluster
+                            Settings</button>
+                        <button class="btn"
+                            style="background: transparent; border: 1px solid var(--danger); color: var(--danger);">Reset
+                            Sensors</button>
+                    </div>
+                </div>
+
+                <div class="glass-card">
+                    <h3>Connection Status</h3>
+                    <div style="margin-top: 1.5rem;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
+                            <span class="stat-label">Supabase Cloud</span>
+                            <span class="badge badge-success">CONNECTED</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
+                            <span class="stat-label">mmWave Radar API</span>
+                            <span class="badge badge-success">ONLINE</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span class="stat-label">WebSocket Cluster</span>
+                            <span class="badge badge-success">ACTIVE</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -268,6 +389,40 @@
 
         // Initialize Supabase Client
         const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // System Settings State
+        let settings = {
+            confidence: 85,
+            monitoringApi: '',
+            registrationApi: '',
+            activeNode: 'node-01'
+        };
+
+        function loadSettings() {
+            const saved = localStorage.getItem('gaitguard_settings');
+            if (saved) {
+                settings = JSON.parse(saved);
+                // Update UI fields
+                const range = document.querySelector('input[type="range"]');
+                if (range) {
+                    range.value = settings.confidence;
+                    range.nextElementSibling.value = settings.confidence;
+                }
+                document.getElementById('monitoring-api').value = settings.monitoringApi;
+                document.getElementById('registration-api').value = settings.registrationApi;
+                document.getElementById('active-node').value = settings.activeNode;
+            }
+        }
+
+        function saveSettings() {
+            settings.confidence = document.querySelector('input[type="range"]').value;
+            settings.monitoringApi = document.getElementById('monitoring-api').value;
+            settings.registrationApi = document.getElementById('registration-api').value;
+            settings.activeNode = document.getElementById('active-node').value;
+
+            localStorage.setItem('gaitguard_settings', JSON.stringify(settings));
+            showToast("✅ System Settings Saved Locally");
+        }
 
         // State
         let signalChart;
@@ -288,11 +443,14 @@
             let titles = {
                 'dashboard': 'Command Center',
                 'registration': 'Person Enrollment',
-                'records': 'Intelligence Database'
+                'records': 'Intelligence Database',
+                'analytics': 'Strategic Analytics',
+                'settings': 'System Settings'
             };
             document.getElementById('view-title').innerText = titles[view];
 
             if (view === 'records') loadPeople();
+            if (view === 'analytics') initAnalyticsCharts();
         }
 
         // Clock
@@ -334,6 +492,65 @@
             });
         }
         initChart();
+
+        // Analytics Charts
+        let ratioChart, trendsChart;
+        function initAnalyticsCharts() {
+            if (ratioChart) ratioChart.destroy();
+            if (trendsChart) trendsChart.destroy();
+
+            const ratioCtx = document.getElementById('ratioChart').getContext('2d');
+            ratioChart = new Chart(ratioCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Identified', 'Unknown'],
+                    datasets: [{
+                        data: [75, 25],
+                        backgroundColor: ['#10b981', '#ef4444'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    cutout: '70%',
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#94a3b8', font: { family: 'Tahoma' } }
+                        }
+                    }
+                }
+            });
+
+            const trendsCtx = document.getElementById('trendsChart').getContext('2d');
+            trendsChart = new Chart(trendsCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    datasets: [{
+                        label: 'Total Crossings',
+                        data: [45, 52, 38, 65, 48, 72, 55],
+                        backgroundColor: 'rgba(99, 102, 241, 0.5)',
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            border: { display: false },
+                            ticks: { color: '#94a3b8' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            border: { display: false },
+                            ticks: { color: '#94a3b8' }
+                        }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
 
         // Simulated signal updates
         setInterval(() => {
@@ -484,6 +701,7 @@
         fetchEvents();
         fetchStats();
         setupRealtime();
+        loadSettings();
 
         // We can keep a slow fallback poll every 30s just in case, but no longer need 3s.
         setInterval(fetchEvents, 30000);
