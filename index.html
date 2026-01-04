@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="dashboard.css">
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 
 <body>
@@ -262,6 +263,11 @@
 
         // Constants
         const API_BASE = "http://127.0.0.1:8000/api";
+        const SUPABASE_URL = "https://ydgbvaqcviisvdlmyrvt.supabase.co";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlkZ2J2YXFjdmlpc3ZkbG15cnZ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc0OTE1NTIsImV4cCI6MjA4MzA2NzU1Mn0._eVtQSi_FvRdOQAuPiEqNslw-LDtCcYr7ujJrZDID44";
+
+        // Initialize Supabase Client
+        const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         // State
         let signalChart;
@@ -438,8 +444,37 @@
         `;
         document.head.appendChild(style);
 
-        setInterval(fetchEvents, 3000);
+        // Realtime Subscription
+        function setupRealtime() {
+            db
+                .channel('realtime_crossings')
+                .on('postgres_changes', {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'monitoring_crossingevent'
+                }, payload => {
+                    console.log('New crossing detected via Realtime:', payload.new);
+                    // Refresh the list and stats immediately
+                    fetchEvents();
+                    fetchStats();
+
+                    // Trigger visual alert if unknown
+                    if (!payload.new.is_identified) {
+                        triggerAlert(payload.new.location);
+                    }
+                })
+                .subscribe();
+
+            console.log("Supabase Realtime Connection Established.");
+        }
+
+        // Initialize
         fetchEvents();
+        fetchStats();
+        setupRealtime();
+
+        // We can keep a slow fallback poll every 30s just in case, but no longer need 3s.
+        setInterval(fetchEvents, 30000);
 
         async function loadPeople() {
             try {
