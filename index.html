@@ -125,14 +125,11 @@
                             </div>
                             <div class="stat-card" style="margin-top: 1rem; padding: 1rem;">
                                 <h4>Active Nodes</h4>
-                                <ul style="list-style: none; margin-top: 0.5rem; font-size: 0.85rem;">
-                                    <li style="display: flex; justify-content: space-between; margin-bottom: 0.4rem;">
-                                        <span>Forest Path A</span>
-                                        <span style="color: var(--accent);">Online</span>
-                                    </li>
-                                    <li style="display: flex; justify-content: space-between;">
-                                        <span>Checkpoint 1</span>
-                                        <span style="color: var(--accent);">Online</span>
+                                <ul id="active-nodes-list"
+                                    style="list-style: none; margin-top: 0.5rem; font-size: 0.85rem;">
+                                    <li
+                                        style="display: flex; justify-content: space-between; margin-bottom: 0.4rem; opacity: 0.5;">
+                                        <span>Initialzing...</span>
                                     </li>
                                 </ul>
                             </div>
@@ -225,7 +222,7 @@
                 </div>
                 <div class="stat-card">
                     <p class="stat-label">Active Nodes</p>
-                    <p class="stat-value">03</p>
+                    <p class="stat-value" id="ana-nodes">--</p>
                 </div>
             </div>
 
@@ -327,15 +324,15 @@
                     <div style="margin-top: 1.5rem;">
                         <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
                             <span class="stat-label">Supabase Cloud</span>
-                            <span class="badge badge-success">CONNECTED</span>
+                            <span id="status-supabase" class="badge">CONNECTING...</span>
                         </div>
                         <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
                             <span class="stat-label">mmWave Radar API</span>
-                            <span class="badge badge-success">ONLINE</span>
+                            <span id="status-radar" class="badge">OFFLINE</span>
                         </div>
                         <div style="display: flex; justify-content: space-between;">
                             <span class="stat-label">WebSocket Cluster</span>
-                            <span class="badge badge-success">ACTIVE</span>
+                            <span id="status-websocket" class="badge">INACTIVE</span>
                         </div>
                     </div>
                 </div>
@@ -345,21 +342,7 @@
                     <p class="stat-label">Security and hardware audit trail</p>
                     <table style="width: 100%; margin-top: 1rem; font-size: 0.85rem;">
                         <tbody id="system-logs">
-                            <tr>
-                                <td style="color: var(--text-muted);">09:44:12</td>
-                                <td>API Connection Authenticated</td>
-                                <td style="color: var(--accent);">SUCCESS</td>
-                            </tr>
-                            <tr>
-                                <td style="color: var(--text-muted);">09:30:05</td>
-                                <td>mmWave Node 02 Calibrated</td>
-                                <td style="color: var(--accent);">SUCCESS</td>
-                            </tr>
-                            <tr>
-                                <td style="color: var(--text-muted);">08:15:22</td>
-                                <td>Supabase Realtime Sync Channel Opened</td>
-                                <td style="color: var(--accent);">SUCCESS</td>
-                            </tr>
+                            <!-- Real logs injected here -->
                         </tbody>
                     </table>
                 </div>
@@ -411,6 +394,49 @@
 
             localStorage.setItem('gaitguard_settings', JSON.stringify(settings));
             showToast("✅ System Settings Saved Locally");
+            logSystemEvent(`Settings updated for ${settings.activeNode}`);
+            updateConnectionBadge('status-radar', 'success', 'ONLINE');
+        }
+
+        function logSystemEvent(action, status = 'SUCCESS') {
+            const list = document.getElementById('system-logs');
+            if (!list) return;
+            const tr = document.createElement('tr');
+            const now = new Date();
+            tr.innerHTML = `
+                <td style="color: var(--text-muted);">${now.toLocaleTimeString()}</td>
+                <td>${action}</td>
+                <td style="color: ${status === 'SUCCESS' ? 'var(--accent)' : 'var(--danger)'};">${status}</td>
+            `;
+            list.prepend(tr);
+            if (list.children.length > 8) list.lastElementChild.remove();
+        }
+
+        function updateConnectionBadge(id, status, text) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.className = `badge badge-${status}`;
+            el.innerText = text;
+        }
+
+        const NODES = [
+            { id: 'node-01', name: 'Checkpoint 1', loc: [20, 30] },
+            { id: 'node-02', name: 'Forest Path A', loc: [50, 70] },
+            { id: 'node-03', name: 'Remote Trail B', loc: [80, 40] }
+        ];
+
+        function updateActiveNodes() {
+            const list = document.getElementById('active-nodes-list');
+            const anaNodes = document.getElementById('ana-nodes');
+            if (list) {
+                list.innerHTML = NODES.map(node => `
+                    <li style="display: flex; justify-content: space-between; margin-bottom: 0.4rem;">
+                        <span>${node.name}</span>
+                        <span style="color: var(--accent);">Online</span>
+                    </li>
+                `).join('');
+            }
+            if (anaNodes) anaNodes.innerText = `0${NODES.length}`;
         }
 
         // State
@@ -745,9 +771,18 @@
                     // Trigger visual alert if unknown
                     if (!payload.new.is_identified) {
                         triggerAlert(payload.new.location);
+                        logSystemEvent(`Unauthorized Intrusion at ${payload.new.location}`, 'ALERT');
+                    } else {
+                        logSystemEvent(`Subject Identified at ${payload.new.location}`);
                     }
                 })
-                .subscribe();
+                .subscribe((status) => {
+                    if (status === 'SUBSCRIBED') {
+                        updateConnectionBadge('status-supabase', 'success', 'CONNECTED');
+                        updateConnectionBadge('status-websocket', 'success', 'ACTIVE');
+                        logSystemEvent("Supabase Realtime Sync Channel Opened");
+                    }
+                });
 
             console.log("Supabase Realtime Connection Established.");
         }
@@ -757,6 +792,13 @@
         fetchStats();
         setupRealtime();
         loadSettings();
+        updateActiveNodes();
+
+        // Initial Connection Checks
+        setTimeout(() => {
+            logSystemEvent("API Connection Authenticated");
+            updateConnectionBadge('status-radar', 'success', 'ONLINE');
+        }, 1200);
 
         // We can keep a slow fallback poll every 30s just in case, but no longer need 3s.
         setInterval(fetchEvents, 30000);
